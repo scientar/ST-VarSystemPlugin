@@ -14,7 +14,13 @@ export function stableStringify(value: unknown): string {
     return `[${items.join(",")}]`;
   }
 
+  if (!isPlainObject(value)) {
+    const json = JSON.stringify(value);
+    return json ?? "null";
+  }
+
   const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, val]) => val !== undefined)
     .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
     .map(([key, val]) => `${JSON.stringify(key)}:${stableStringify(val)}`);
 

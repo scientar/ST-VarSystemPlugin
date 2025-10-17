@@ -2,6 +2,10 @@
 
 SillyTavern 变量管理服务器插件原型。提供 REST 接口来存储与读取对话变量快照，配合前端扩展实现高效的变量版本管理。
 
+## 环境要求
+
+- Node.js 22 或更高版本（依赖内置的 `node:sqlite` 模块）。
+
 ## 开发流程
 
 1. 在仓库根目录执行 `npm install` 安装依赖。
@@ -25,7 +29,7 @@ SillyTavern 变量管理服务器插件原型。提供 REST 接口来存储与�
 | `/var-manager/templates`                | POST | 保存/更新角色初始模板，`characterName` 为唯一键                                                                                         |
 | `/var-manager/templates/:characterName` | GET  | 读取指定角色的初始模板                                                                                                                  |
 
-快照写入接口会执行值去重：短字符串、数字等会直接内联，长字符串会统一存放在 `value_pool` 表并以 `{"$ref": id}` 的方式引用。模板接口直接存储 JSON 串。
+快照写入接口会执行值去重：短字符串、数字等会直接内联，长字符串会统一存放在 `value_pool` 表并以 `{"__vmRef": id}` 的方式引用（仍兼容历史数据中的 `{"$ref": id}`）。模板接口直接存储 JSON 串。
 
 ## 后续路线
 

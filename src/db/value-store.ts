@@ -6,6 +6,9 @@ import {
 } from "../util/serialization";
 import type { SqliteDatabase, SqliteStatement } from "./connection";
 
+export const VALUE_REFERENCE_KEY = "__vmRef";
+export const LEGACY_VALUE_REFERENCE_KEY = "$ref";
+
 type CacheEntry = {
   id: number;
 };
@@ -54,7 +57,7 @@ export async function transformLeafValue(
   const cached = ctx.valueCache.get(hash);
   if (cached) {
     await ctx.incrementRef.run(cached.id);
-    return { $ref: cached.id };
+    return { [VALUE_REFERENCE_KEY]: cached.id };
   }
 
   const existing = (await ctx.selectValue.get(hash)) as
@@ -63,7 +66,7 @@ export async function transformLeafValue(
   if (existing) {
     await ctx.incrementRef.run(existing.id);
     ctx.valueCache.set(hash, { id: existing.id });
-    return { $ref: existing.id };
+    return { [VALUE_REFERENCE_KEY]: existing.id };
   }
 
   const valueType = detectValueType(value);
@@ -83,9 +86,9 @@ export async function transformLeafValue(
   if (insertId === null) {
     const inserted = (await ctx.selectValue.get(hash)) as { id: number };
     ctx.valueCache.set(hash, { id: inserted.id });
-    return { $ref: inserted.id };
+    return { [VALUE_REFERENCE_KEY]: inserted.id };
   }
   const id = Number(insertId);
   ctx.valueCache.set(hash, { id });
-  return { $ref: id };
+  return { [VALUE_REFERENCE_KEY]: id };
 }

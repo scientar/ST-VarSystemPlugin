@@ -8,8 +8,10 @@ import {
 } from "./structure-store";
 import {
   createValueContext,
+  LEGACY_VALUE_REFERENCE_KEY,
   releaseValueContext,
   transformLeafValue,
+  VALUE_REFERENCE_KEY,
 } from "./value-store";
 
 export interface SnapshotParams {
@@ -89,12 +91,8 @@ async function hydrateStructure(
     return result;
   }
 
-  if ("$ref" in (value as Record<string, unknown>)) {
-    const refId = (value as { $ref?: unknown }).$ref;
-    if (typeof refId !== "number") {
-      return null;
-    }
-
+  const refId = extractReferenceId(value);
+  if (refId !== null) {
     const row = (await stmt.get(refId)) as { value_data: string } | undefined;
     if (!row) {
       return null;
@@ -113,6 +111,27 @@ async function hydrateStructure(
   }
 
   return result;
+}
+
+function extractReferenceId(value: unknown): number | null {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record);
+
+  if (keys.length === 1 && keys[0] === VALUE_REFERENCE_KEY) {
+    const candidate = record[VALUE_REFERENCE_KEY];
+    return typeof candidate === "number" ? candidate : null;
+  }
+
+  if (keys.length === 1 && keys[0] === LEGACY_VALUE_REFERENCE_KEY) {
+    const candidate = record[LEGACY_VALUE_REFERENCE_KEY];
+    return typeof candidate === "number" ? candidate : null;
+  }
+
+  return null;
 }
 
 export async function saveSnapshot(
