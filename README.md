@@ -1,4 +1,4 @@
-# VarManagerPlugin
+# ST-VarSystemPlugin
 
 SillyTavern 变量管理服务器插件原型。提供 REST 接口来存储与读取对话变量快照，配合前端扩展实现高效的变量版本管理。
 
@@ -14,7 +14,7 @@ SillyTavern 变量管理服务器插件原型。提供 REST 接口来存储与�
 
 ## 部署到 SillyTavern
 
-1. 将整个 `VarManagerPlugin` 文件夹复制到 `{SillyTavern_Folder}/plugins/VarManagerPlugin`。
+1. 将整个 `ST-VarSystemPlugin` 文件夹复制到 `{SillyTavern_Folder}/plugins/ST-VarSystemPlugin`。
 2. 确保 `config.yaml` 中 `enableServerPlugins: true`，并在插件列表里启用本插件（如果首次启动尚无配置文件，可先运行一次 SillyTavern 生成默认配置，再编辑）。
 3. 重启 SillyTavern 服务器，日志中应看到 `[VarManagerPlugin]` 的启动提示。
 4. 数据库默认写入插件目录下的 `data/var-manager.db`；若设置了 `SILLYTAVERN_DATA_DIR` 环境变量，则会使用 `{SILLYTAVERN_DATA_DIR}/var-manager/var-manager.db`。
