@@ -23,8 +23,5 @@ module.exports = {
     ],
   },
   externalsPresets: { node: true },
-  externals: {
-    "better-sqlite3": "commonjs2 better-sqlite3",
-  },
   devtool: "source-map",
 };

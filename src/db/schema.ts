@@ -39,6 +39,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_msg_identifier ON message_variables(identi
 COMMIT;
 `;
 
-export function applyMigrations(db: SqliteDatabase): void {
-  db.exec(CREATE_TABLES_SQL);
+export async function applyMigrations(db: SqliteDatabase): Promise<void> {
+  await db.exec(CREATE_TABLES_SQL);
 }

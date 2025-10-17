@@ -36,9 +36,9 @@ const templateRequestSchema = z.object({
 });
 
 export async function init(router: Router): Promise<void> {
-  const db = getDatabase();
+  const db = await getDatabase();
   try {
-    applyMigrations(db);
+    await applyMigrations(db);
   } catch (err) {
     error("数据库迁移失败", err);
     throw err;
@@ -53,7 +53,7 @@ export async function init(router: Router): Promise<void> {
   router.post(
     "/var-manager/snapshots",
     jsonParser,
-    (req: Request, res: Response) => {
+    async (req: Request, res: Response) => {
       const parsed = snapshotRequestSchema.safeParse(req.body);
       if (!parsed.success) {
         warn("快照请求数据校验失败", parsed.error.format());
@@ -63,8 +63,8 @@ export async function init(router: Router): Promise<void> {
         });
       }
 
-      const db = getDatabase();
       try {
+        const db = await getDatabase();
         if (
           parsed.data.payload === null ||
           (typeof parsed.data.payload !== "object" &&
@@ -81,7 +81,7 @@ export async function init(router: Router): Promise<void> {
           chatFile: parsed.data.chatFile,
           payload: parsed.data.payload,
         };
-        const result = saveSnapshot(db, snapshotParams);
+        const result = await saveSnapshot(db, snapshotParams);
         const status = result.replaced ? 200 : 201;
         return res.status(status).json(result);
       } catch (err) {
@@ -93,26 +93,31 @@ export async function init(router: Router): Promise<void> {
 
   router.get(
     "/var-manager/snapshots/:identifier",
-    (req: Request, res: Response) => {
+    async (req: Request, res: Response) => {
       const { identifier } = req.params;
       if (!identifier) {
         return res.status(400).json({ error: "identifier 参数缺失" });
       }
 
-      const db = getDatabase();
-      const record = getSnapshot(db, identifier);
-      if (!record) {
-        return res.status(404).json({ error: "Snapshot not found" });
-      }
+      try {
+        const db = await getDatabase();
+        const record = await getSnapshot(db, identifier);
+        if (!record) {
+          return res.status(404).json({ error: "Snapshot not found" });
+        }
 
-      return res.json(record);
+        return res.json(record);
+      } catch (err) {
+        error("读取快照失败", err);
+        return res.status(500).json({ error: "Failed to read snapshot" });
+      }
     },
   );
 
   router.post(
     "/var-manager/templates",
     jsonParser,
-    (req: Request, res: Response) => {
+    async (req: Request, res: Response) => {
       const parsed = templateRequestSchema.safeParse(req.body);
       if (!parsed.success) {
         warn("模板保存请求校验失败", parsed.error.format());
@@ -122,9 +127,9 @@ export async function init(router: Router): Promise<void> {
         });
       }
 
-      const db = getDatabase();
       try {
-        const record = upsertTemplate(db, {
+        const db = await getDatabase();
+        const record = await upsertTemplate(db, {
           characterName: parsed.data.characterName,
           template: parsed.data.template,
         });
@@ -138,19 +143,24 @@ export async function init(router: Router): Promise<void> {
 
   router.get(
     "/var-manager/templates/:characterName",
-    (req: Request, res: Response) => {
+    async (req: Request, res: Response) => {
       const { characterName } = req.params;
       if (!characterName) {
         return res.status(400).json({ error: "characterName 参数缺失" });
       }
 
-      const db = getDatabase();
-      const record = getTemplate(db, characterName);
-      if (!record) {
-        return res.status(404).json({ error: "Template not found" });
-      }
+      try {
+        const db = await getDatabase();
+        const record = await getTemplate(db, characterName);
+        if (!record) {
+          return res.status(404).json({ error: "Template not found" });
+        }
 
-      return res.json(record);
+        return res.json(record);
+      } catch (err) {
+        error("读取模板失败", err);
+        return res.status(500).json({ error: "Failed to read template" });
+      }
     },
   );
 
@@ -165,7 +175,7 @@ export async function init(router: Router): Promise<void> {
 
 export async function exit(): Promise<void> {
   try {
-    closeDatabase();
+    await closeDatabase();
     log("插件已退出");
   } catch (err) {
     error("插件退出时发生错误", err);
