@@ -302,3 +302,50 @@ export async function deleteSnapshotsByChatFile(
   const changes = result.changes ?? 0;
   return typeof changes === "bigint" ? Number(changes) : changes;
 }
+
+/**
+ * 清理孤立快照（不对应任何现存聊天记录的快照）
+ * @param db 数据库连接
+ * @param activeChatFiles 活跃的聊天文件名列表
+ * @returns 清理结果统计
+ */
+export async function cleanupOrphanedSnapshots(
+  db: SqliteDatabase,
+  activeChatFiles: string[],
+): Promise<{
+  deletedCount: number;
+  totalScanned: number;
+  deletedChatFiles: string[];
+}> {
+  // 1. 查询所有快照的 chat_file
+  const allSnapshotsStmt = await db.prepare(
+    "SELECT DISTINCT chat_file FROM message_variables",
+  );
+  const allSnapshots = (await allSnapshotsStmt.all()) as Array<{
+    chat_file: string;
+  }>;
+
+  // 2. 找出孤立的 chat_file（不在 activeChatFiles 中）
+  const activeChatFileSet = new Set(activeChatFiles);
+  const orphanedChatFiles: string[] = [];
+
+  for (const row of allSnapshots) {
+    const chatFile = row.chat_file;
+    if (chatFile && !activeChatFileSet.has(chatFile)) {
+      orphanedChatFiles.push(chatFile);
+    }
+  }
+
+  // 3. 删除孤立的快照
+  let totalDeleted = 0;
+  for (const chatFile of orphanedChatFiles) {
+    const deleted = await deleteSnapshotsByChatFile(db, chatFile);
+    totalDeleted += deleted;
+  }
+
+  return {
+    deletedCount: totalDeleted,
+    totalScanned: allSnapshots.length,
+    deletedChatFiles: orphanedChatFiles,
+  };
+}

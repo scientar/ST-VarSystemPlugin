@@ -11,6 +11,7 @@ import {
 } from "./db/global-snapshots";
 import { applyMigrations } from "./db/schema";
 import {
+  cleanupOrphanedSnapshots,
   deleteSnapshot,
   deleteSnapshotsByChatFile,
   getSnapshot,
@@ -178,6 +179,32 @@ export async function init(router: Router): Promise<void> {
         return res
           .status(500)
           .json({ error: "Failed to delete snapshots by chat file" });
+      }
+    },
+  );
+
+  // 清理孤立快照（不对应任何现存聊天记录的快照）
+  router.post(
+    "/var-manager/snapshots/cleanup",
+    jsonParser,
+    async (req: Request, res: Response) => {
+      const { activeChatFiles } = req.body;
+
+      if (!Array.isArray(activeChatFiles)) {
+        return res.status(400).json({
+          error: "activeChatFiles 必须是字符串数组",
+        });
+      }
+
+      try {
+        const db = await getDatabase();
+        const result = await cleanupOrphanedSnapshots(db, activeChatFiles);
+        return res.json(result);
+      } catch (err) {
+        error("清理孤立快照失败", err);
+        return res.status(500).json({
+          error: "Failed to cleanup orphaned snapshots",
+        });
       }
     },
   );
