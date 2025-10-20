@@ -10,7 +10,13 @@ import {
   saveGlobalSnapshot,
 } from "./db/global-snapshots";
 import { applyMigrations } from "./db/schema";
-import { getSnapshot, type SnapshotParams, saveSnapshot } from "./db/snapshots";
+import {
+  deleteSnapshot,
+  deleteSnapshotsByChatFile,
+  getSnapshot,
+  type SnapshotParams,
+  saveSnapshot,
+} from "./db/snapshots";
 import { getTemplate, upsertTemplate } from "./db/templates";
 import { error, log, warn } from "./logger";
 
@@ -127,6 +133,51 @@ export async function init(router: Router): Promise<void> {
       } catch (err) {
         error("读取快照失败", err);
         return res.status(500).json({ error: "Failed to read snapshot" });
+      }
+    },
+  );
+
+  // 删除单个消息快照
+  router.delete(
+    "/var-manager/snapshots/:identifier",
+    async (req: Request, res: Response) => {
+      const { identifier } = req.params;
+      if (!identifier) {
+        return res.status(400).json({ error: "identifier 参数缺失" });
+      }
+
+      try {
+        const db = await getDatabase();
+        await deleteSnapshot(db, identifier);
+        return res.sendStatus(204);
+      } catch (err) {
+        error("删除快照失败", err);
+        return res.status(500).json({ error: "Failed to delete snapshot" });
+      }
+    },
+  );
+
+  // 按聊天文件删除所有消息快照
+  router.delete(
+    "/var-manager/snapshots/by-chat/:chatFile",
+    async (req: Request, res: Response) => {
+      const { chatFile } = req.params;
+      if (!chatFile) {
+        return res.status(400).json({ error: "chatFile 参数缺失" });
+      }
+
+      try {
+        const db = await getDatabase();
+        const deletedCount = await deleteSnapshotsByChatFile(db, chatFile);
+        return res.json({
+          deletedCount,
+          message: `已删除 ${deletedCount} 个快照`,
+        });
+      } catch (err) {
+        error("批量删除快照失败", err);
+        return res
+          .status(500)
+          .json({ error: "Failed to delete snapshots by chat file" });
       }
     },
   );

@@ -269,3 +269,36 @@ export async function getSnapshot(
     // node:sqlite 的 StatementSync 无需显式释放。
   }
 }
+
+/**
+ * 删除单个消息快照（按 identifier）
+ */
+export async function deleteSnapshot(
+  db: SqliteDatabase,
+  identifier: string,
+): Promise<void> {
+  const deleteStmt = await db.prepare(
+    "DELETE FROM message_variables WHERE identifier = ?",
+  );
+
+  await deleteStmt.run(identifier);
+  // 注意：不删除 value_pool 和 variable_structures 中的记录，
+  // 因为可能被其他快照共享。清理由定期维护任务处理。
+}
+
+/**
+ * 删除指定聊天文件的所有消息快照
+ */
+export async function deleteSnapshotsByChatFile(
+  db: SqliteDatabase,
+  chatFile: string,
+): Promise<number> {
+  const deleteStmt = await db.prepare(
+    "DELETE FROM message_variables WHERE chat_file = ?",
+  );
+
+  const result = await deleteStmt.run(chatFile);
+  // result.changes 包含删除的行数 (可能是 number 或 bigint)
+  const changes = result.changes ?? 0;
+  return typeof changes === "bigint" ? Number(changes) : changes;
+}
