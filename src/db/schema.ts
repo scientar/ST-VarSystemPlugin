@@ -49,6 +49,10 @@ CREATE INDEX IF NOT EXISTS idx_msg_chat ON message_variables(chat_file);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_msg_identifier ON message_variables(identifier);
 CREATE INDEX IF NOT EXISTS idx_snapshot_id ON global_snapshots(snapshot_id);
 CREATE INDEX IF NOT EXISTS idx_snapshot_name ON global_snapshots(name);
+-- 性能优化：加速按更新时间排序的列表查询
+CREATE INDEX IF NOT EXISTS idx_snapshot_updated_desc ON global_snapshots(updated_at DESC);
+-- 性能优化：加速 cleanup 时的 chat_file 和 message_id 复合查询
+CREATE INDEX IF NOT EXISTS idx_msg_chat_message ON message_variables(chat_file, message_id);
 COMMIT;
 `;
 

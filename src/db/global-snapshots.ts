@@ -61,10 +61,19 @@ export interface ListGlobalSnapshotsResult {
   total: number;
 }
 
+// 防止深层嵌套对象导致栈溢出
+const MAX_RECURSION_DEPTH = 100;
+
 async function buildStructure(
   value: unknown,
   ctx: Awaited<ReturnType<typeof createValueContext>>,
+  depth: number = 0,
 ): Promise<unknown> {
+  // 深度限制检查
+  if (depth > MAX_RECURSION_DEPTH) {
+    throw new Error(`全局快照对象嵌套深度超过 ${MAX_RECURSION_DEPTH} 层，可能存在循环引用或异常数据`);
+  }
+
   if (value === null || typeof value !== "object") {
     return transformLeafValue(value, ctx);
   }
@@ -72,7 +81,7 @@ async function buildStructure(
   if (Array.isArray(value)) {
     const result: unknown[] = [];
     for (const item of value) {
-      result.push(await buildStructure(item, ctx));
+      result.push(await buildStructure(item, ctx, depth + 1));
     }
     return result;
   }
@@ -83,7 +92,7 @@ async function buildStructure(
 
   const result: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-    result[key] = await buildStructure(child, ctx);
+    result[key] = await buildStructure(child, ctx, depth + 1);
   }
 
   return result;

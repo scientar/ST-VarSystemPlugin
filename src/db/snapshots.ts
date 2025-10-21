@@ -39,10 +39,19 @@ export interface SnapshotRecord {
   payload: unknown;
 }
 
+// 防止深层嵌套对象导致栈溢出
+const MAX_RECURSION_DEPTH = 100;
+
 async function buildStructure(
   value: unknown,
   ctx: Awaited<ReturnType<typeof createValueContext>>,
+  depth: number = 0,
 ): Promise<unknown> {
+  // 深度限制检查
+  if (depth > MAX_RECURSION_DEPTH) {
+    throw new Error(`快照对象嵌套深度超过 ${MAX_RECURSION_DEPTH} 层，可能存在循环引用或异常数据`);
+  }
+
   if (value === null || typeof value !== "object") {
     return transformLeafValue(value, ctx);
   }
@@ -50,7 +59,7 @@ async function buildStructure(
   if (Array.isArray(value)) {
     const result: unknown[] = [];
     for (const item of value) {
-      result.push(await buildStructure(item, ctx));
+      result.push(await buildStructure(item, ctx, depth + 1));
     }
     return result;
   }
@@ -61,7 +70,7 @@ async function buildStructure(
 
   const result: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-    result[key] = await buildStructure(child, ctx);
+    result[key] = await buildStructure(child, ctx, depth + 1);
   }
 
   return result;
@@ -336,11 +345,30 @@ export async function cleanupOrphanedSnapshots(
     }
   }
 
-  // 3. 删除孤立的快照
+  // 3. 批量删除孤立的快照（优化：单条 SQL 替代 N+1 循环）
   let totalDeleted = 0;
-  for (const chatFile of orphanedChatFiles) {
-    const deleted = await deleteSnapshotsByChatFile(db, chatFile);
-    totalDeleted += deleted;
+
+  if (orphanedChatFiles.length === 0) {
+    return {
+      deletedCount: 0,
+      totalScanned: allSnapshots.length,
+      deletedChatFiles: [],
+    };
+  }
+
+  // 使用 NOT IN 子句批量删除（如果 activeChatFiles 不为空）
+  if (activeChatFiles.length > 0) {
+    const placeholders = activeChatFiles.map(() => '?').join(',');
+    const deleteStmt = await db.prepare(
+      `DELETE FROM message_variables WHERE chat_file NOT IN (${placeholders})`
+    );
+    const result = await deleteStmt.run(...activeChatFiles);
+    totalDeleted = Number(result.changes ?? 0);
+  } else {
+    // 如果没有活跃聊天，删除所有快照
+    const deleteStmt = await db.prepare('DELETE FROM message_variables');
+    const result = await deleteStmt.run();
+    totalDeleted = Number(result.changes ?? 0);
   }
 
   return {
