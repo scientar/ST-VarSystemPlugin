@@ -40,15 +40,14 @@ git clone https://github.com/scientar/ST-VarSystemPlugin.git
 
 ```yaml
 enableServerPlugins: true
+enableServerPluginsAutoUpdate: true  //可选，启用自动更新，会在运行酒馆时自动拉取最新插件仓库
 ```
-
-如果是首次安装，可能还需要在 `config.yaml` 中添加插件配置（通常 SillyTavern 会自动检测）。
 
 ### 第三步：重启服务器
 
 重启 SillyTavern 服务器。如果安装成功，控制台日志中应该能看到类似以下的启动提示：
 
-```
+```bash
 [VarManagerPlugin] 插件已加载
 [VarManagerPlugin] 数据库初始化完成
 ```
@@ -91,7 +90,3 @@ enableServerPlugins: true
 4. 修改源代码后，执行 `npm run build` 构建生产版本
 
 欢迎提交 Issue 和 Pull Request！
-
-## 致谢
-
-本项目在开发过程中参考了 SillyTavern 社区的多个优秀项目，特此致谢。
