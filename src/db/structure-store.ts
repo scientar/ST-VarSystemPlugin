@@ -35,7 +35,9 @@ export async function persistStructure(
   structureHash: string;
   created: boolean;
 }> {
-  const serialized = stableStringify(structure);
+  // 修改：使用 JSON.stringify 保留原始字段顺序（不排序）
+  // 之前使用 stableStringify 会对字段按字母排序，导致显示时顺序改变
+  const serialized = JSON.stringify(structure);
   const hash = hashString(serialized);
 
   const existing = (await ctx.selectStructure.get(hash)) as
